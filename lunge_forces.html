@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fencing Lunge — Joint Impact Force Simulator</title>
+<style>
+  :root {
+    --bg: #f4f6fb;
+    --panel: #ffffff;
+    --panel-soft: #eef2fb;
+    --border: #dce3f0;
+    --text: #16203a;
+    --muted: #5b6782;
+    --blue: #1e3a8a;
+    --blue-soft: #e4ecff;
+    --red: #e23b3b;
+    --green: #1f9d55;
+    --amber: #c9820a;
+    --shadow: rgba(20, 32, 58, 0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e131f;
+      --panel: #161d2e;
+      --panel-soft: #1d2637;
+      --border: #2a3550;
+      --text: #eef2fb;
+      --muted: #9aa7c4;
+      --blue: #6f97ff;
+      --blue-soft: #22304f;
+      --red: #ff6b6b;
+      --green: #4ade80;
+      --amber: #eab04a;
+      --shadow: rgba(0, 0, 0, 0.5);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 64px; }
+  header h1 { font-size: 1.7rem; margin: 0 0 6px; letter-spacing: -0.02em; }
+  header p.sub { color: var(--muted); margin: 0 0 4px; max-width: 70ch; }
+  .badge {
+    display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--blue); background: var(--blue-soft);
+    padding: 4px 10px; border-radius: 999px; margin-bottom: 14px;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 22px; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
+    padding: 20px; box-shadow: 0 8px 24px var(--shadow);
+  }
+  .card h2 { margin: 0 0 4px; font-size: 1.05rem; }
+  .card .hint { color: var(--muted); font-size: 0.85rem; margin: 0 0 16px; }
+  .control { margin-bottom: 20px; }
+  .control:last-child { margin-bottom: 4px; }
+  .control .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .control label { font-weight: 600; font-size: 0.92rem; }
+  .control .val { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--blue); }
+  .control .val small { color: var(--muted); font-weight: 500; }
+  input[type=range] {
+    width: 100%; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px;
+    background: var(--panel-soft); outline: none; margin: 6px 0 2px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--blue); cursor: pointer; border: 3px solid var(--panel); box-shadow: 0 1px 4px var(--shadow);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 17px; height: 17px; border-radius: 50%; background: var(--blue); cursor: pointer; border: 3px solid var(--panel);
+  }
+  .ends { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); }
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 420px) { .metrics { grid-template-columns: 1fr; } }
+  .metric {
+    background: var(--panel-soft); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px;
+  }
+  .metric .k { font-size: 0.78rem; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .metric .v { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 2px; letter-spacing: -0.02em; }
+  .metric .v small { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+  .metric.headline { background: linear-gradient(135deg, var(--blue-soft), var(--panel-soft)); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .dot.grf { background: var(--blue); }
+  .dot.knee { background: var(--red); }
+  .dot.ankle { background: var(--amber); }
+  .chart-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  select {
+    font: inherit; font-size: 0.88rem; padding: 7px 10px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--panel); color: var(--text); cursor: pointer;
+  }
+  .legend { display: flex; gap: 16px; font-size: 0.8rem; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .chart-wrap { width: 100%; overflow-x: auto; }
+  svg .axis { stroke: var(--border); stroke-width: 1; }
+  svg .grid-line { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.6; }
+  svg .tick { fill: var(--muted); font-size: 11px; }
+  svg .axis-label { fill: var(--muted); font-size: 11px; font-weight: 600; }
+  svg .now { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; }
+  .formulas { font-size: 0.9rem; }
+  .eq {
+    background: var(--panel-soft); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; margin: 10px 0; font-family: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.9rem; overflow-x: auto;
+  }
+  .eq b { color: var(--blue); }
+  .assumptions { font-size: 0.85rem; color: var(--muted); }
+  .assumptions li { margin-bottom: 6px; }
+  .disclaimer {
+    margin-top: 22px; font-size: 0.82rem; color: var(--muted); background: var(--panel);
+    border: 1px dashed var(--border); border-radius: 14px; padding: 14px 16px;
+  }
+  code { background: var(--panel-soft); padding: 1px 5px; border-radius: 5px; font-size: 0.85em; }
+  .full { grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="badge">FoilVision · Biomechanics Module</div>
+    <h1>Fencing Lunge — Joint Impact Force Simulator</h1>
+    <p class="sub">
+      Estimate the ground reaction force and the load transmitted to the <b>knee</b> and
+      <b>ankle</b> when the front foot lands during a lunge. Drag the sliders to see how
+      lunge speed, depth, landing technique, and body mass change the impact — using classical
+      mechanics (impulse–momentum &amp; Newton's second law), no deep learning.
+    </p>
+  </header>
+
+  <div class="grid">
+    <!-- CONTROLS -->
+    <section class="card">
+      <h2>Parameters</h2>
+      <p class="hint">Adjust a lunge and watch the joint loads update live.</p>
+
+      <div class="control">
+        <div class="row"><label for="mass">Body mass</label><span class="val" id="massV">70 <small>kg</small></span></div>
+        <input type="range" id="mass" min="40" max="120" step="1" value="70" />
+        <div class="ends"><span>40 kg</span><span>120 kg</span></div>
+      </div>
+
+      <div class="control">
+        <div class="row"><label for="speed">Lunge speed (forward velocity at landing)</label><span class="val" id="speedV">3.0 <small>m/s</small></span></div>
+        <input type="range" id="speed" min="1" max="5" step="0.1" value="3" />
+        <div class="ends"><span>slow · 1 m/s</span><span>explosive · 5 m/s</span></div>
+      </div>
+
+      <div class="control">
+        <div class="row"><label for="depth">Lunge depth (center-of-mass drop)</label><span class="val" id="depthV">25 <small>cm</small></span></div>
+        <input type="range" id="depth" min="5" max="45" step="1" value="25" />
+        <div class="ends"><span>shallow · 5 cm</span><span>deep · 45 cm</span></div>
+      </div>
+
+      <div class="control">
+        <div class="row"><label for="dt">Landing technique (ground-contact time)</label><span class="val" id="dtV">60 <small>ms</small></span></div>
+        <input type="range" id="dt" min="20" max="150" step="5" value="60" />
+        <div class="ends"><span>stiff · 20 ms</span><span>soft/absorbed · 150 ms</span></div>
+      </div>
+    </section>
+
+    <!-- RESULTS -->
+    <section class="card">
+      <h2>Estimated impact loads</h2>
+      <p class="hint">Peak values during the landing phase.</p>
+      <div class="metrics">
+        <div class="metric headline">
+          <div class="k"><span class="dot grf"></span>Peak ground reaction force</div>
+          <div class="v"><span id="grfBW">7.9</span><small> ×BW</small></div>
+          <div class="k" id="grfN">5438 N</div>
+        </div>
+        <div class="metric headline">
+          <div class="k"><span class="dot knee"></span>Knee joint force</div>
+          <div class="v"><span id="kneeBW">12.6</span><small> ×BW</small></div>
+          <div class="k" id="kneeN">8657 N</div>
+        </div>
+        <div class="metric">
+          <div class="k"><span class="dot ankle"></span>Ankle joint force</div>
+          <div class="v"><span id="ankleBW">7.8</span><small> ×BW</small></div>
+          <div class="k" id="ankleN">5356 N</div>
+        </div>
+        <div class="metric">
+          <div class="k">Knee flexion at landing</div>
+          <div class="v"><span id="theta">70</span><small>°</small></div>
+          <div class="k">deeper lunge → more flexion</div>
+        </div>
+        <div class="metric">
+          <div class="k">Velocity arrested (Δv)</div>
+          <div class="v"><span id="dv">2.52</span><small> m/s</small></div>
+          <div class="k">forward + vertical</div>
+        </div>
+        <div class="metric">
+          <div class="k">Landing impulse (J = m·Δv)</div>
+          <div class="v"><span id="impulse">176</span><small> N·s</small></div>
+          <div class="k">momentum removed</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHART -->
+    <section class="card full">
+      <div class="chart-head">
+        <h2>How one parameter drives the load</h2>
+        <label>Sweep:
+          <select id="sweep">
+            <option value="dt" selected>Landing technique (contact time)</option>
+            <option value="speed">Lunge speed</option>
+            <option value="depth">Lunge depth</option>
+            <option value="mass">Body mass</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">All other parameters stay at your current slider values. The dashed line marks where you are now.</p>
+      <div class="chart-wrap">
+        <svg id="chart" viewBox="0 0 720 340" width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Force vs parameter chart"></svg>
+      </div>
+      <div class="legend">
+        <span><span class="dot grf"></span> Peak ground reaction force (×BW)</span>
+        <span><span class="dot knee"></span> Knee joint force (×BW)</span>
+        <span><span class="dot ankle"></span> Ankle joint force (×BW)</span>
+      </div>
+    </section>
+
+    <!-- PHYSICS -->
+    <section class="card">
+      <h2>The physics</h2>
+      <div class="formulas">
+        <p style="margin:0 0 4px;color:var(--muted);font-size:.85rem">Vertical landing speed from the center-of-mass drop <code>h</code>:</p>
+        <div class="eq">v<sub>vert</sub> = <b>√(2 · g · h)</b></div>
+        <p style="margin:0 0 4px;color:var(--muted);font-size:.85rem">Total velocity the front leg must arrest (forward + vertical):</p>
+        <div class="eq">Δv = <b>√( (f · v<sub>fwd</sub>)² + v<sub>vert</sub>² )</b></div>
+        <p style="margin:0 0 4px;color:var(--muted);font-size:.85rem">Average force from impulse–momentum + body weight (Newton II):</p>
+        <div class="eq">F<sub>avg</sub> = <b>m · Δv / Δt</b> + m · g</div>
+        <p style="margin:0 0 4px;color:var(--muted);font-size:.85rem">Peak force, joint loads:</p>
+        <div class="eq">F<sub>peak</sub> = k · F<sub>avg</sub>
+  &nbsp;&nbsp;F<sub>knee</sub> = F<sub>peak</sub> · a(θ)
+  &nbsp;&nbsp;F<sub>ankle</sub> ≈ F<sub>peak</sub></div>
+      </div>
+    </section>
+
+    <!-- ASSUMPTIONS -->
+    <section class="card">
+      <h2>Model &amp; assumptions</h2>
+      <ul class="assumptions">
+        <li><b>g</b> = 9.81 m/s². Body weight <b>BW</b> = m·g.</li>
+        <li><b>f = 0.40</b> — fraction of forward momentum arrested by the front leg on contact (the rest carries through the lunge).</li>
+        <li><b>k = 1.5</b> — peak-to-average factor for a roughly triangular impact pulse.</li>
+        <li><b>Knee amplification a(θ) = 1 + 0.9·(1 − cos θ)</b> — quadriceps/patellar load rises with knee flexion; θ is mapped from lunge depth (≈30° shallow → ≈110° deep).</li>
+        <li>Ankle sees essentially the full ground reaction force (distal foot mass is negligible during impact). Segment masses follow standard anthropometric tables (Winter).</li>
+        <li>Single rigid point-mass impact model — no soft-tissue, muscle co-contraction dynamics, or multi-segment inverse dynamics.</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="disclaimer">
+    <b>Educational estimate, not a clinical measurement.</b> This is a simplified classical-mechanics
+    model built to show how lunge parameters influence joint impact loads — the qualitative trends
+    (stiffer/faster/deeper landings raise joint force) are robust, but absolute values are approximate.
+    A validated study would use force plates and multi-segment inverse dynamics.
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var g = 9.81, F_BRAKE = 0.40, K_PEAK = 1.5;
+
+  var ids = ["mass", "speed", "depth", "dt", "sweep"];
+  var el = {};
+  ids.forEach(function (id) { el[id] = document.getElementById(id); });
+
+  // depth (cm) -> knee flexion angle (deg)
+  function thetaFromDepth(depthCm) {
+    // 5 cm -> 30 deg, 45 cm -> 110 deg (linear)
+    return 30 + (110 - 30) * (depthCm - 5) / (45 - 5);
+  }
+  function kneeAmp(thetaDeg) {
+    var t = thetaDeg * Math.PI / 180;
+    return 1 + 0.9 * (1 - Math.cos(t));
+  }
+
+  // Core model. p = {mass kg, speed m/s, depth cm, dt ms}
+  function compute(p) {
+    var m = p.mass;
+    var h = p.depth / 100;                 // cm -> m
+    var dt = p.dt / 1000;                  // ms -> s
+    var vVert = Math.sqrt(2 * g * h);
+    var vFwd = F_BRAKE * p.speed;
+    var dv = Math.sqrt(vFwd * vFwd + vVert * vVert);
+    var bw = m * g;
+    var fAvg = m * dv / dt + bw;
+    var fPeak = K_PEAK * fAvg;
+    var theta = thetaFromDepth(p.depth);
+    var fKnee = fPeak * kneeAmp(theta);
+    var fAnkle = fPeak * 0.985;            // minus distal foot (~1.45%)
+    return {
+      dv: dv, impulse: m * dv, theta: theta, bw: bw,
+      grfN: fPeak, kneeN: fKnee, ankleN: fAnkle,
+      grfBW: fPeak / bw, kneeBW: fKnee / bw, ankleBW: fAnkle / bw
+    };
+  }
+
+  function readParams() {
+    return {
+      mass: +el.mass.value,
+      speed: +el.speed.value,
+      depth: +el.depth.value,
+      dt: +el.dt.value
+    };
+  }
+
+  function fmt(n, d) { return n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }); }
+
+  function render() {
+    var p = readParams();
+    var r = compute(p);
+
+    document.getElementById("massV").innerHTML = p.mass + " <small>kg</small>";
+    document.getElementById("speedV").innerHTML = fmt(p.speed, 1) + " <small>m/s</small>";
+    document.getElementById("depthV").innerHTML = p.depth + " <small>cm</small>";
+    document.getElementById("dtV").innerHTML = p.dt + " <small>ms</small>";
+
+    document.getElementById("grfBW").textContent = fmt(r.grfBW, 1);
+    document.getElementById("grfN").textContent = Math.round(r.grfN).toLocaleString() + " N";
+    document.getElementById("kneeBW").textContent = fmt(r.kneeBW, 1);
+    document.getElementById("kneeN").textContent = Math.round(r.kneeN).toLocaleString() + " N";
+    document.getElementById("ankleBW").textContent = fmt(r.ankleBW, 1);
+    document.getElementById("ankleN").textContent = Math.round(r.ankleN).toLocaleString() + " N";
+    document.getElementById("theta").textContent = Math.round(r.theta);
+    document.getElementById("dv").textContent = fmt(r.dv, 2);
+    document.getElementById("impulse").textContent = Math.round(r.impulse);
+
+    drawChart(p);
+  }
+
+  var SWEEPS = {
+    mass:  { min: 40, max: 120, label: "Body mass (kg)", unit: "" },
+    speed: { min: 1,  max: 5,   label: "Lunge speed (m/s)", unit: "" },
+    depth: { min: 5,  max: 45,  label: "Lunge depth (cm)", unit: "" },
+    dt:    { min: 20, max: 150, label: "Ground-contact time (ms)", unit: "" }
+  };
+
+  function drawChart(p) {
+    var key = el.sweep.value;
+    var cfg = SWEEPS[key];
+    var W = 720, H = 340, mL = 52, mR = 16, mT = 16, mB = 46;
+    var plotW = W - mL - mR, plotH = H - mT - mB;
+    var N = 60;
+
+    var xs = [], grf = [], knee = [], ankle = [];
+    for (var i = 0; i <= N; i++) {
+      var x = cfg.min + (cfg.max - cfg.min) * i / N;
+      var pp = { mass: p.mass, speed: p.speed, depth: p.depth, dt: p.dt };
+      pp[key] = x;
+      var rr = compute(pp);
+      xs.push(x); grf.push(rr.grfBW); knee.push(rr.kneeBW); ankle.push(rr.ankleBW);
+    }
+    var yMax = 0;
+    knee.forEach(function (v) { if (v > yMax) yMax = v; });
+    yMax = Math.ceil(yMax / 5) * 5 || 5;
+
+    function X(v) { return mL + (v - cfg.min) / (cfg.max - cfg.min) * plotW; }
+    function Y(v) { return mT + plotH - (v / yMax) * plotH; }
+
+    function path(arr) {
+      var d = "";
+      for (var i = 0; i < arr.length; i++) { d += (i ? "L" : "M") + X(xs[i]).toFixed(1) + " " + Y(arr[i]).toFixed(1); }
+      return d;
+    }
+
+    var svg = "";
+    // y gridlines + ticks
+    var ySteps = 5;
+    for (var s = 0; s <= ySteps; s++) {
+      var yv = yMax * s / ySteps;
+      var yy = Y(yv);
+      svg += '<line class="grid-line" x1="' + mL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - mR) + '" y2="' + yy.toFixed(1) + '"/>';
+      svg += '<text class="tick" x="' + (mL - 8) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end">' + yv.toFixed(0) + '</text>';
+    }
+    // x ticks
+    var xSteps = 5;
+    for (var t = 0; t <= xSteps; t++) {
+      var xv = cfg.min + (cfg.max - cfg.min) * t / xSteps;
+      var xx = X(xv);
+      svg += '<text class="tick" x="' + xx.toFixed(1) + '" y="' + (H - mB + 18) + '" text-anchor="middle">' + (Math.round(xv * 10) / 10) + '</text>';
+    }
+    // axes
+    svg += '<line class="axis" x1="' + mL + '" y1="' + mT + '" x2="' + mL + '" y2="' + (mT + plotH) + '"/>';
+    svg += '<line class="axis" x1="' + mL + '" y1="' + (mT + plotH) + '" x2="' + (W - mR) + '" y2="' + (mT + plotH) + '"/>';
+    // "now" marker
+    var nowX = X(p[key]);
+    svg += '<line class="now" x1="' + nowX.toFixed(1) + '" y1="' + mT + '" x2="' + nowX.toFixed(1) + '" y2="' + (mT + plotH) + '"/>';
+    // lines
+    svg += '<path d="' + path(ankle) + '" fill="none" stroke="var(--amber)" stroke-width="2"/>';
+    svg += '<path d="' + path(grf) + '" fill="none" stroke="var(--blue)" stroke-width="2.5"/>';
+    svg += '<path d="' + path(knee) + '" fill="none" stroke="var(--red)" stroke-width="2.5"/>';
+    // labels
+    svg += '<text class="axis-label" x="' + (mL + plotW / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + cfg.label + '</text>';
+    svg += '<text class="axis-label" transform="translate(14,' + (mT + plotH / 2) + ') rotate(-90)" text-anchor="middle">Force (× body weight)</text>';
+
+    document.getElementById("chart").innerHTML = svg;
+  }
+
+  ids.forEach(function (id) { el[id].addEventListener("input", render); });
+  render();
+})();
+</script>
+</body>
+</html>
